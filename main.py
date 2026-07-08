@@ -1,3 +1,4 @@
+import os
 import asyncio
 from io import BytesIO
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -534,13 +535,14 @@ async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     request = HTTPXRequest(
-        connect_timeout=60.0,
-        read_timeout=60.0,
-        write_timeout=60.0,
-        pool_timeout=60.0,
+        connect_timeout=120.0,
+        read_timeout=120.0,
+        write_timeout=120.0,
+        pool_timeout=120.0,
     )
     app = Application.builder().token(BOT_TOKEN).request(request).build()
 
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("allow", allow_cmd))
     app.add_handler(CommandHandler("take", take_cmd))
     app.add_handler(CommandHandler("users", users_cmd))
@@ -559,12 +561,23 @@ def main():
     app.add_handler(CallbackQueryHandler(stop_button, pattern="^stop_mass$"))
     app.add_handler(MessageHandler(filters.Document.TEXT, handle_document))
 
-    print("Bot is running...")
-    print(f"Owner ID: {OWNER_ID}")
-    app.run_polling(
-        connect_timeout=60.0,
-        read_timeout=60.0,
-    )
+    PORT = int(os.getenv("PORT", "10000"))
+    RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+
+    if RENDER_EXTERNAL_URL:
+        webhook_url = f"{RENDER_EXTERNAL_URL}/webhook"
+        print(f"Starting webhook on 0.0.0.0:{PORT}")
+        print(f"Webhook URL: {webhook_url}")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path="webhook",
+            webhook_url=webhook_url,
+        )
+    else:
+        print("Bot is running (polling)...")
+        print(f"Owner ID: {OWNER_ID}")
+        app.run_polling()
 
 
 if __name__ == "__main__":
